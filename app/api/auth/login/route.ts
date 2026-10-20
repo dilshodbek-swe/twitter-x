@@ -8,11 +8,26 @@ export async function POST(req: Request) {
 		await connectToDatabase()
 		const { email, password } = await req.json()
 
+		if (typeof email !== 'string' || typeof password !== 'string') {
+			return NextResponse.json(
+				{ error: 'Email and password are required.' },
+				{ status: 400 }
+			)
+		}
+
 		const isExistingUser = await User.findOne({ email })
 
 		if (!isExistingUser) {
 			return NextResponse.json(
 				{ error: 'Email does not exist.' },
+				{ status: 400 }
+			)
+		}
+
+		// Accounts created with Google/GitHub have no password
+		if (!isExistingUser.password) {
+			return NextResponse.json(
+				{ error: 'This account uses Google or GitHub sign-in.' },
 				{ status: 400 }
 			)
 		}
@@ -26,7 +41,8 @@ export async function POST(req: Request) {
 			)
 		}
 
-		return NextResponse.json({ success: true, user: isExistingUser })
+		// Don't send the user document back: it contains the password hash
+		return NextResponse.json({ success: true })
 	} catch (error) {
 		const result = error as Error
 		return NextResponse.json({ error: result.message }, { status: 400 })
