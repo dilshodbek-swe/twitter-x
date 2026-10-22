@@ -8,7 +8,8 @@ export async function GET(
 ) {
 	try {
 		await connectToDatabase()
-		const { query } = route.params
+		// Escape regex special characters so input like "(" or ".*" is matched literally
+		const query = route.params.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 		const users = await User.find({
 			$or: [
