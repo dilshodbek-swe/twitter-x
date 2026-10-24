@@ -85,7 +85,8 @@ export async function GET(req: Request) {
 			return NextResponse.json({ error: 'User not found' }, { status: 404 })
 		}
 
-		const publicFields = '_id name username email profileImage'
+		// followers is needed by the client to show Follow / Unfollow
+		const publicFields = '_id name username email profileImage followers'
 		if (state === 'following') {
 			const following = await User.find({ _id: { $in: user.following } }).select(publicFields)
 			return NextResponse.json(following)
