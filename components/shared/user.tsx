@@ -5,7 +5,7 @@ import { sliceText } from '@/lib/utils'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Button from '../ui/button'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
 
 interface Props {
@@ -21,24 +21,46 @@ const User = ({ user, onChangeFollowing, isFollow, following }: Props) => {
 	const { data: session }: any = useSession()
 	const router = useRouter()
 
-	const onFollow = async () => {
+	const currentUserId: string | undefined = session?.currentUser?._id
+	const [isFollowing, setIsFollowing] = useState(false)
+
+	// The session loads asynchronously, so re-check once it's available
+	useEffect(() => {
+		setIsFollowing(!!currentUserId && !!user.followers?.includes(currentUserId))
+	}, [currentUserId, user.followers])
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const onFollow = async (e?: any) => {
+		e?.stopPropagation()
 		try {
 			setIsLoading(true)
-			await axios.put(`/api/follows`, {
-				userId: user._id,
-				currentUserId: session.currentUserId._id,
-			})
-			const updatedFollowing = [...(following as IUser[]), user]
-			// @typescript-eslint/no-unused-expressions
-			onChangeFollowing && onChangeFollowing(updatedFollowing)
+			// The server takes the current user from the session
+			await axios.put(`/api/follows`, { userId: user._id })
+			setIsFollowing(true)
+			onChangeFollowing?.([...(following ?? []), user])
 			router.refresh()
-			setIsLoading(false)
 		} catch (error) {
 			console.log(error)
+		} finally {
+			setIsLoading(false)
 		}
 	}
 
-	const onUnfollow = async () => {}
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const onUnfollow = async (e?: any) => {
+		e?.stopPropagation()
+		try {
+			setIsLoading(true)
+			await axios.delete(`/api/follows`, { data: { userId: user._id } })
+			setIsFollowing(false)
+			onChangeFollowing?.((following ?? []).filter(u => u._id !== user._id))
+			router.refresh()
+		} catch (error) {
+			console.log(error)
+		} finally {
+			setIsLoading(false)
+		}
+	}
 
 	return (
 		<div className='flex justify-between items-center gap-3 cursor-pointer hover:bg-neutral-300/30 hover:bg-opacity-10 transition py-2 px-3 rounded-md'>
@@ -60,9 +82,9 @@ const User = ({ user, onChangeFollowing, isFollow, following }: Props) => {
 				</div>
 			</div>
 
-			{isFollow && user._id !== session?.currentUser._id ? (
+			{isFollow && currentUserId && user._id !== currentUserId ? (
 				<>
-					{user.followers.includes(session?.currentUser?._id) ? (
+					{isFollowing ? (
 						<Button
 							label={'Unfollow'}
 							outline
