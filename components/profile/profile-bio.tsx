@@ -26,30 +26,28 @@ const ProfileBio = ({ user, userId }: { user: IUser; userId: string }) => {
 	const editModal = useEditModal()
 	const router = useRouter()
 
+	// The server takes the current user from the session
 	const onFollow = async () => {
 		try {
 			setIsLoading(true)
-			await axios.put(`/api/follows`, {
-				userId: user._id,
-				currentUserId: userId,
-			})
+			await axios.put(`/api/follows`, { userId: user._id })
 			router.refresh()
-			setIsLoading(false)
 		} catch (error) {
 			console.log(error)
+		} finally {
+			setIsLoading(false)
 		}
 	}
 
 	const onUnfollow = async () => {
 		try {
 			setIsLoading(true)
-			await axios.delete(`/api/follows`, {
-				data: { userId: user._id, currentUserId: userId },
-			})
+			await axios.delete(`/api/follows`, { data: { userId: user._id } })
 			router.refresh()
-			setIsLoading(false)
 		} catch (error) {
 			console.log(error)
+		} finally {
+			setIsLoading(false)
 		}
 	}
 
@@ -68,36 +66,31 @@ const ProfileBio = ({ user, userId }: { user: IUser; userId: string }) => {
 		}
 	}
 
-	const openFollowModal = async () => {
-		try {
-			setOpen(true)
-			const { data } = await getFollowUser(user._id, 'following')
-			setFollowing(data)
-		} catch (error) {
-			console.log(error)
-		}
-	}
-
+	// Always refetch so the lists aren't stale after following / unfollowing
 	const onFollowing = async () => {
 		setState('following')
-		if (following.length === 0) {
-			// @typescript-eslint/no-unused-expressions
-			const { data } = await getFollowUser(user._id, 'following')
-			data && setFollowing(data)
-		}
+		const { data } = await getFollowUser(user._id, 'following')
+		setFollowing(data ?? [])
 	}
 
 	const onFollowers = async () => {
 		setState('followers')
-		if (followers.length === 0) {
-			// @typescript-eslint/no-unused-expressions
-			const { data } = await getFollowUser(user._id, 'followers')
-			data && setFollowers(data)
-		}
+		const { data } = await getFollowUser(user._id, 'followers')
+		setFollowers(data ?? [])
 	}
 
-	// @typescript-eslint/no-unused-vars
-	const onChangeFollowing = async (data: IUser[]) => {}
+	// Open the modal on the tab that was clicked
+	const openFollowModal = (type: 'following' | 'followers') => {
+		setOpen(true)
+		if (type === 'following') onFollowing()
+		else onFollowers()
+	}
+
+	// Following / unfollowing from the modal only changes *this* list
+	// when it's your own profile
+	const onChangeFollowing = (data: IUser[]) => {
+		if (userId === user._id) setFollowing(data)
+	}
 
 	return (
 		<>
@@ -152,14 +145,14 @@ const ProfileBio = ({ user, userId }: { user: IUser; userId: string }) => {
 						<div className='flex flex-row items-center mt-6 gap-6'>
 							<div
 								className='flex flex-row items-center gap-1 hover:underline cursor-pointer'
-								onClick={openFollowModal}
+								onClick={() => openFollowModal('following')}
 							>
 								<p className='text-white'>{user.following}</p>
 								<p className='text-neutral-500'>Following</p>
 							</div>
 							<div
 								className='flex flex-row items-center gap-1 hover:underline cursor-pointer'
-								onClick={openFollowModal}
+								onClick={() => openFollowModal('followers')}
 							>
 								<p className='text-white'>{user.followers}</p>
 								<p className='text-neutral-500'>Followers</p>
