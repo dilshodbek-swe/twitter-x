@@ -20,12 +20,14 @@ const Form = ({ user, placeholder, setPosts, isComment, postId }: Props) => {
 	const [isLoading, setIsLoading] = useState(false)
 
 	const onSubmit = async () => {
+		// Ignore empty posts and double submits (e.g. pressing Enter repeatedly)
+		if (!body.trim() || isLoading) return
+
 		try {
 			setIsLoading(true)
 			if (isComment) {
 				const { data } = await axios.post('/api/comments', {
 					body,
-					userId: user._id,
 					postId,
 				})
 				const newComment = {
@@ -36,10 +38,7 @@ const Form = ({ user, placeholder, setPosts, isComment, postId }: Props) => {
 				}
 				setPosts((prev) => [newComment, ...prev])
 			} else {
-				const { data } = await axios.post('/api/posts', {
-					body,
-					userId: user._id,
-				})
+				const { data } = await axios.post('/api/posts', { body })
 				const newPost = {
 					...data,
 					user,
@@ -82,7 +81,13 @@ const Form = ({ user, placeholder, setPosts, isComment, postId }: Props) => {
 						disabled={isLoading}
 						value={body}
 						onChange={e => setBody(e.target.value)}
-						onKeyDown={e => e.key === 'Enter' && onSubmit()}
+						onKeyDown={e => {
+							// Enter posts, Shift+Enter adds a new line
+							if (e.key === 'Enter' && !e.shiftKey) {
+								e.preventDefault()
+								onSubmit()
+							}
+						}}
 					></textarea>
 					<hr className='opacity-0 peer-focus:opacity-100 h-[1px] w-full border-neutral-800 transition' />
 
@@ -90,7 +95,7 @@ const Form = ({ user, placeholder, setPosts, isComment, postId }: Props) => {
 						<Button
 							label={isComment ? 'Reply' : 'Post'}
 							classNames='px-8'
-							disabled={isLoading || !body}
+							disabled={isLoading || !body.trim()}
 							onClick={onSubmit}
 						/>
 					</div>
