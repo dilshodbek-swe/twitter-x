@@ -130,7 +130,6 @@ const Page = ({ params }: { params: { postId: string } }) => {
 								key={comment._id}
 								user={JSON.parse(JSON.stringify(session.currentUser))}
 								setComments={setComments}
-								comments={comments}
 							/>
 						))
 					)}

@@ -14,10 +14,9 @@ interface Props {
 	comment: IPost
 	user: IUser
 	setComments: Dispatch<SetStateAction<IPost[]>>
-	comments: IPost[]
 }
 
-const CommentItem = ({ comment, user, setComments, comments }: Props) => {
+const CommentItem = ({ comment, user, setComments }: Props) => {
 	const [isLoading, setIsLoading] = useState(false)
 
 	const router = useRouter()
@@ -29,24 +28,25 @@ const CommentItem = ({ comment, user, setComments, comments }: Props) => {
 				await axios.delete(`/api/comments`, {
 					data: { commentId: comment._id },
 				})
-				const updatedComments = comments.map(c => {
-					if (c._id === comment._id) {
-						return { ...c, hasLiked: false, likes: c.likes - 1 }
-					}
-					return c
-				})
-				setComments(updatedComments)
+				// Functional update: always work on the latest list
+				setComments(prev =>
+					prev.map(c =>
+						c._id === comment._id
+							? { ...c, hasLiked: false, likes: Math.max(0, c.likes - 1) }
+							: c
+					)
+				)
 			} else {
 				await axios.put(`/api/comments`, {
 					commentId: comment._id,
 				})
-				const updatedComments = comments.map(c => {
-					if (c._id === comment._id) {
-						return { ...c, hasLiked: true, likes: c.likes + 1 }
-					}
-					return c
-				})
-				setComments(updatedComments)
+				setComments(prev =>
+					prev.map(c =>
+						c._id === comment._id
+							? { ...c, hasLiked: true, likes: c.likes + 1 }
+							: c
+					)
+				)
 			}
 			setIsLoading(false)
 		} catch (error) {
