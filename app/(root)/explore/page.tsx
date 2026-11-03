@@ -8,7 +8,7 @@ import { IUser } from '@/types'
 import axios from 'axios'
 import { Loader2, Search } from 'lucide-react'
 import Link from 'next/link'
-import { ChangeEvent, useEffect, useState } from 'react'
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { debounce } from 'lodash'
 
 const Page = () => {
@@ -32,21 +32,40 @@ const Page = () => {
 		getAllUsers()
 	}, [])
 
-	const handleSearch = async (e: ChangeEvent<HTMLInputElement>) => {
-		const text = e.target.value.toLowerCase()
+	// Ignore responses from searches that are no longer the latest one
+	const latestQuery = useRef('')
 
-		if (text && text.length > 2) {
-			setIsLoading(true)
-			const { data } = await axios.get(`/api/users/search/${text}`)
-			setUsers(data)
-			setIsLoading(false)
-		} else {
-			setUsers(allUser)
-			setIsLoading(false)
-		}
-	}
+	// Keep a single debounced function across renders, otherwise debouncing does nothing
+	const debouncedSearch = useMemo(
+		() =>
+			debounce(async (text: string) => {
+				latestQuery.current = text
 
-	const debouncedSearch = debounce(handleSearch, 500)
+				if (text.length <= 2) {
+					setUsers(allUser)
+					setIsLoading(false)
+					return
+				}
+
+				try {
+					setIsLoading(true)
+					const { data } = await axios.get(
+						`/api/users/search/${encodeURIComponent(text)}`
+					)
+					if (latestQuery.current === text) setUsers(data)
+				} catch (error) {
+					console.log(error)
+				} finally {
+					if (latestQuery.current === text) setIsLoading(false)
+				}
+			}, 500),
+		[allUser]
+	)
+
+	useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch])
+
+	const handleSearch = (e: ChangeEvent<HTMLInputElement>) =>
+		debouncedSearch(e.target.value.trim().toLowerCase())
 
 	return (
 		<>
@@ -55,7 +74,7 @@ const Page = () => {
 				<Input
 					placeholder='Search for users'
 					className='mt-2 w-[98%] mx-auto block border-none bg-neutral-900 text-white'
-					onChange={debouncedSearch}
+					onChange={handleSearch}
 				/>
 
 				<div className='absolute rounded-md h-14 w-14 flex items-center justify-center p-4 hover:bg-slate-300 hover:bg-opacity-10 right-2 top-1/2 -translate-y-1/2 cursor-pointer'>
