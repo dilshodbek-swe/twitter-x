@@ -11,6 +11,8 @@ import { useState } from 'react'
 
 const Page = ({ params }: { params: { userId: string } }) => {
 	const { data, isLoading, mutate } = useNotifications(params.userId)
+	// data is undefined when the request fails (e.g. 401 / 403)
+	const notifications: IPost[] = Array.isArray(data) ? data : []
 	const [isClearing, setIsClearing] = useState(false)
 
 	const onClear = async () => {
@@ -33,8 +35,8 @@ const Page = ({ params }: { params: { userId: string } }) => {
 				</div>
 			) : (
 				<div className='flex flex-col'>
-					{data.length > 0 ? (
-						data.map((notification: IPost) => (
+					{notifications.length > 0 ? (
+						notifications.map((notification: IPost) => (
 							<div
 								className='flex flex-row items-center p-6 gap-6 border-b-[1px] border-neutral-800'
 								key={notification._id}
@@ -54,7 +56,7 @@ const Page = ({ params }: { params: { userId: string } }) => {
 						</div>
 					)}
 
-					{data.length > 0 && (
+					{notifications.length > 0 && (
 						<div className='mt-4 flex justify-center'>
 							<Button
 								outline
