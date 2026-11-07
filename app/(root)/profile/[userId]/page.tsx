@@ -6,10 +6,12 @@ import { getUserById } from '@/lib/actions/user.action'
 import { authOptions } from '@/lib/auth-options'
 import { IUser } from '@/types'
 import { getServerSession } from 'next-auth'
-import React from 'react'
+import { notFound } from 'next/navigation'
 
 const Page = async ({ params }: { params: { userId: string } }) => {
-	const user: IUser = await getUserById(params.userId)
+	const user = (await getUserById(params.userId)) as IUser | null
+	if (!user) notFound()
+
 	// @typescript-eslint/no-explicit-any
 	const session: any = await getServerSession(authOptions)
 
