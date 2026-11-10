@@ -16,8 +16,8 @@ interface Props {
 }
 
 const EditModal = ({ user }: Props) => {
-	const [coverImage, setCoverImage] = useState('')
-	const [profileImage, setProfileImage] = useState('')
+	const [coverImage, setCoverImage] = useState(user.coverImage || '')
+	const [profileImage, setProfileImage] = useState(user.profileImage || '')
 	const [isLoading, setIsLoading] = useState(false)
 
 	const editModal = useEditModal()

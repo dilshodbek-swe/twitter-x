@@ -1,7 +1,7 @@
 'use client'
 
 import { useDropzone } from 'react-dropzone'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import { MdEdit } from 'react-icons/md'
 import { IoIosCloudDownload } from 'react-icons/io'
@@ -12,6 +12,11 @@ interface Props {
 }
 const CoverImageUpload = ({ coverImage, onChange }: Props) => {
 	const [image, setImage] = useState(coverImage)
+
+	// Show the saved image when it arrives / changes after the first render
+	useEffect(() => {
+		setImage(coverImage)
+	}, [coverImage])
 
 	const handleChange = useCallback(
 		(coverImage: string) => {

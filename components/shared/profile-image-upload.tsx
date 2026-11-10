@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { IoMdDownload } from 'react-icons/io'
 import { MdEdit } from 'react-icons/md'
@@ -13,6 +13,11 @@ interface Props {
 
 const ProfileImageUpload = ({ profileImage, onChange }: Props) => {
 	const [image, setImage] = useState(profileImage)
+
+	// Show the saved image when it arrives / changes after the first render
+	useEffect(() => {
+		setImage(profileImage)
+	}, [profileImage])
 
 	const handleChange = useCallback(
 		(profileImage: string) => {
