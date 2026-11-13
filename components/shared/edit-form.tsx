@@ -41,10 +41,10 @@ const EditForm = ({ user }: Props) => {
 			editModal.onClose()
 			// @typescript-eslint/no-explicit-any
 		} catch (error: any) {
-			if (error.response.data.error) {
+			if (error.response?.data?.error) {
 				return toast({
 					title: 'Error',
-					description: error.response.data.error,
+					description: error.response?.data?.error,
 					variant: 'destructive',
 				})
 			} else {

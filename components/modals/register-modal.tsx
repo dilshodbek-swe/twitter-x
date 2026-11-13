@@ -86,8 +86,8 @@ function RegisterStep1({
 			}
 			// @typescript-eslint/no-explicit-any
 		} catch (error: any) {
-			if (error.response.data.error) {
-				setError(error.response.data.error)
+			if (error.response?.data?.error) {
+				setError(error.response?.data?.error)
 			} else {
 				setError('Something went wrong. Please try again later.')
 			}
@@ -172,8 +172,8 @@ function RegisterStep2({ data }: { data: { name: string; email: string } }) {
 			}
 			// @typescript-eslint/no-explicit-any
 		} catch (error: any) {
-			if (error.response.data.error) {
-				setError(error.response.data.error)
+			if (error.response?.data?.error) {
+				setError(error.response?.data?.error)
 			} else {
 				setError('Something went wrong. Please try again later.')
 			}
