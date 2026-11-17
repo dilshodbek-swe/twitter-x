@@ -59,8 +59,8 @@ Post, like, comment, follow people and get notified — all in a dark, responsiv
 ### 1 · Clone & install
 
 ```bash
-git clone https://github.com/<your-username>/mern-twitter.git
-cd mern-twitter
+git clone https://github.com/dilshodbek-swe/twitter-x.git
+cd twitter-x
 npm install
 ```
 
