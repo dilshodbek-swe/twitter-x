@@ -5,6 +5,21 @@ import GoogleProvider from 'next-auth/providers/google'
 import { AuthOptions } from 'next-auth'
 import { connectToDatabase } from './mongoose'
 import User from '@/database/user.model'
+import { compare } from 'bcrypt'
+
+// Extend the Session type to include currentUser
+declare module 'next-auth' {
+	interface Session {
+		currentUser?: {
+			_id: string
+			email: string
+			name: string
+			profileImage: string
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			[key: string]: any
+		}
+	}
+}
 
 export const authOptions: AuthOptions = {
 	providers: [
@@ -15,11 +30,22 @@ export const authOptions: AuthOptions = {
 				password: { label: 'Password', type: 'password' },
 			},
 			async authorize(credentials) {
+				if (!credentials?.email || !credentials?.password) return null
+
 				await connectToDatabase()
 
 				const isExistingUser = await User.findOne({
-					email: credentials?.email,
+					email: credentials.email,
 				})
+
+				// OAuth-only accounts have no password and can't use credentials login
+				if (!isExistingUser || !isExistingUser.password) return null
+
+				const isPasswordValid = await compare(
+					credentials.password,
+					isExistingUser.password
+				)
+				if (!isPasswordValid) return null
 
 				return isExistingUser
 			},
@@ -35,19 +61,23 @@ export const authOptions: AuthOptions = {
 	],
 	callbacks: {
 		async session({ session }) {
-			connectToDatabase()
-			const isExistingUser = await User.findOne({ email: session.user?.email })
-			if (!isExistingUser) {
+			await connectToDatabase()
+
+			// Never expose the password hash — the session is sent to the browser
+			let currentUser = await User.findOne({
+				email: session.user?.email,
+			}).select('-password')
+
+			if (!currentUser) {
 				const newUser = await User.create({
 					email: session.user?.email,
 					name: session.user?.name,
 					profileImage: session.user?.image,
 				})
-
-				session.currentUser = newUser
+				currentUser = await User.findById(newUser._id).select('-password')
 			}
 
-			session.currentUser = isExistingUser
+			session.currentUser = currentUser
 			return session
 		},
 	},

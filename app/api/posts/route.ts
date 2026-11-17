@@ -1,4 +1,6 @@
+import Comment from '@/database/comment.model'
 import Post from '@/database/post.model'
+import { forbidden, getCurrentUserId, unauthorized } from '@/lib/get-current-user'
 import User from '@/database/user.model'
 import { authOptions } from '@/lib/auth-options'
 import { connectToDatabase } from '@/lib/mongoose'
@@ -7,8 +9,15 @@ import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
 	try {
+		const userId = await getCurrentUserId()
+		if (!userId) return unauthorized()
+
 		await connectToDatabase()
-		const { body, userId } = await req.json()
+		const { body } = await req.json()
+
+		if (typeof body !== 'string' || !body.trim()) {
+			return NextResponse.json({ error: 'Post is empty' }, { status: 400 })
+		}
 
 		const post = await Post.create({ body, user: userId })
 		return NextResponse.json(post)
@@ -61,10 +70,20 @@ export async function GET(req: Request) {
 
 export async function DELETE(req: Request) {
 	try {
+		const userId = await getCurrentUserId()
+		if (!userId) return unauthorized()
+
 		await connectToDatabase()
 		const { postId } = await req.json()
 
-		await Post.findOneAndDelete(postId)
+		const post = await Post.findById(postId)
+		if (!post) {
+			return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+		}
+		if (String(post.user) !== userId) return forbidden()
+
+		await Comment.deleteMany({ post: post._id })
+		await post.deleteOne()
 
 		return NextResponse.json({ message: 'Post deleted successfully' })
 	} catch (error) {
