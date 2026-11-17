@@ -2,31 +2,43 @@ import Comment from '@/database/comment.model'
 import Notification from '@/database/notification.model'
 import Post from '@/database/post.model'
 import User from '@/database/user.model'
-import { authOptions } from '@/lib/auth-options'
+import { getCurrentUserId, unauthorized } from '@/lib/get-current-user'
 import { connectToDatabase } from '@/lib/mongoose'
-import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
 	try {
+		const userId = await getCurrentUserId()
+		if (!userId) return unauthorized()
+
 		await connectToDatabase()
-		const { body, userId, postId } = await req.json()
+		const { body, postId } = await req.json()
+
+		if (typeof body !== 'string' || !body.trim()) {
+			return NextResponse.json({ error: 'Comment is empty' }, { status: 400 })
+		}
+
+		const post = await Post.findById(postId)
+		if (!post) {
+			return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+		}
+
 		const comment = await Comment.create({ body, post: postId, user: userId })
-		const post = await Post.findByIdAndUpdate(postId, {
-			$push: { comments: comment._id },
-		})
+		await Post.findByIdAndUpdate(postId, { $push: { comments: comment._id } })
 
-		const commentedUser = await User.findById(userId)
+		if (String(post.user) !== userId) {
+			const commentedUser = await User.findById(userId)
 
-		await Notification.create({
-			user: String(post.user),
-			body: `${commentedUser.name} commented on your post.`,
-		})
+			await Notification.create({
+				user: String(post.user),
+				body: `${commentedUser.name} commented on your post.`,
+			})
 
-		await User.findOneAndUpdate(
-			{ _id: String(post.user) },
-			{ $set: { hasNewNotifications: true } }
-		)
+			await User.findOneAndUpdate(
+				{ _id: String(post.user) },
+				{ $set: { hasNewNotifications: true } }
+			)
+		}
 
 		return NextResponse.json(comment)
 	} catch (error) {
@@ -38,24 +50,29 @@ export async function POST(req: Request) {
 // add a like to a comment
 export async function PUT(req: Request) {
 	try {
+		const userId = await getCurrentUserId()
+		if (!userId) return unauthorized()
+
 		await connectToDatabase()
-		// @typescript-eslint/no-explicit-any
-		const { currentUser }: any = await getServerSession(authOptions)
 		const { commentId } = await req.json()
 
-		const comment = await Comment.findByIdAndUpdate(commentId, {
-			$push: { likes: currentUser._id },
-		})
-
-		await Notification.create({
-			user: String(comment.user),
-			body: `Someone liked your comment.`,
-		})
-
-		await User.findOneAndUpdate(
-			{ _id: String(comment.user) },
-			{ $set: { hasNewNotifications: true } }
+		// Only update if this user hasn't liked the comment yet
+		const comment = await Comment.findOneAndUpdate(
+			{ _id: commentId, likes: { $ne: userId } },
+			{ $addToSet: { likes: userId } }
 		)
+
+		if (comment && String(comment.user) !== userId) {
+			await Notification.create({
+				user: String(comment.user),
+				body: `Someone liked your comment.`,
+			})
+
+			await User.findOneAndUpdate(
+				{ _id: String(comment.user) },
+				{ $set: { hasNewNotifications: true } }
+			)
+		}
 
 		return NextResponse.json({ message: 'Comment liked' })
 	} catch (error) {
@@ -67,14 +84,13 @@ export async function PUT(req: Request) {
 // remove a like from a comment
 export async function DELETE(req: Request) {
 	try {
+		const userId = await getCurrentUserId()
+		if (!userId) return unauthorized()
+
 		await connectToDatabase()
-		// @typescript-eslint/no-explicit-any
-		const { currentUser }: any = await getServerSession(authOptions)
 		const { commentId } = await req.json()
 
-		await Comment.findByIdAndUpdate(commentId, {
-			$pull: { likes: currentUser._id },
-		})
+		await Comment.findByIdAndUpdate(commentId, { $pull: { likes: userId } })
 
 		return NextResponse.json({ message: 'Like removed from comment' })
 	} catch (error) {
