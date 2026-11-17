@@ -10,7 +10,7 @@ import axios from 'axios'
 
 interface Props {
 	user: IUser
-	onChangeFollowing?: (user: IUser) => void
+	onChangeFollowing?: (users: IUser[]) => void
 	isFollow?: boolean
 	following?: IUser[]
 }
